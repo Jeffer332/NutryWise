@@ -34,3 +34,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Ignorar archivo de configuración de Firebase
+firebase.js
