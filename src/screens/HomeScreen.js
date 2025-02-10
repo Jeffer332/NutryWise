@@ -11,14 +11,16 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Animated,
+  Easing,
 } from "react-native"
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore"
 import { auth } from "../services/firebase"
 import { useNavigation } from "@react-navigation/native"
 import Footer from "../components/Footer"
 import ProgressCircle from "../components/ProgressCircle"
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import { MaterialIcons } from "@expo/vector-icons"
+import WaterProgressBar from "../components/WaterProgressBar"
 
 const HomeScreen = () => {
   const [userData, setUserData] = useState(null)
@@ -27,24 +29,20 @@ const HomeScreen = () => {
   const [currentMeal, setCurrentMeal] = useState(null)
   const [searchResults, setSearchResults] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [waterCount, setWaterCount] = useState(0)
+  const [celebrationAnim] = useState(new Animated.Value(0))
   const firestoreDb = getFirestore()
   const navigation = useNavigation()
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const cachedData = await AsyncStorage.getItem("userData")
-        if (cachedData) {
-          setUserData(JSON.parse(cachedData))
-        } else {
-          const user = auth.currentUser
-          if (user) {
-            const userDoc = await getDoc(doc(firestoreDb, "users", user.uid))
-            if (userDoc.exists()) {
-              const data = userDoc.data()
-              setUserData(data)
-              await AsyncStorage.setItem("userData", JSON.stringify(data))
-            }
+        const user = auth.currentUser
+        if (user) {
+          const userDoc = await getDoc(doc(firestoreDb, "users", user.uid))
+          if (userDoc.exists()) {
+            const data = userDoc.data()
+            setUserData(data)
           }
         }
       } catch (error) {
@@ -108,6 +106,12 @@ const HomeScreen = () => {
         ...prevData,
         meals: updatedMeals,
       }))
+
+      // Recalcular los totales y verificar si se alcanzó el objetivo
+      const newTotals = calculateDailyTotals(updatedMeals[dateString])
+      if (newTotals.calories >= 2000) {
+        triggerCelebrationAnimation()
+      }
     }
   }
 
@@ -119,9 +123,7 @@ const HomeScreen = () => {
     setSearchResults(results)
   }
 
-  const calculateDailyTotals = () => {
-    const dateString = selectedDate.toISOString().split("T")[0]
-    const dailyMeals = userData?.meals?.[dateString] || {}
+  const calculateDailyTotals = (dailyMeals = userData?.meals?.[selectedDate.toISOString().split("T")[0]] || {}) => {
     const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 }
 
     Object.values(dailyMeals).forEach((meal) => {
@@ -133,8 +135,54 @@ const HomeScreen = () => {
       })
     })
 
+    // Only limit protein and fat
+    totals.protein = Math.min(totals.protein, 100)
+    totals.fat = Math.min(totals.fat, 65)
+
     return totals
   }
+
+  const updateUserData = async (newData) => {
+    const user = auth.currentUser
+    if (user) {
+      const userRef = doc(firestoreDb, "users", user.uid)
+      await updateDoc(userRef, newData)
+      setUserData((prevData) => ({ ...prevData, ...newData }))
+    }
+  }
+
+  const incrementWaterCount = useCallback(() => {
+    setWaterCount((prevCount) => Math.min(prevCount + 1, 8))
+  }, [])
+
+  const triggerCelebrationAnimation = useCallback(() => {
+    Animated.timing(celebrationAnim, {
+      toValue: 1,
+      duration: 1000,
+      easing: Easing.bounce,
+      useNativeDriver: true,
+    }).start(() => {
+      celebrationAnim.setValue(0)
+    })
+  }, [])
+
+  useEffect(() => {
+    const dateString = selectedDate.toISOString().split("T")[0]
+    const dailyTotals = calculateDailyTotals(userData?.meals?.[dateString])
+    if (dailyTotals.calories >= 1000) {
+      if (!userData?.achievementDays?.includes(dateString)) {
+        const updatedAchievementDays = [...(userData?.achievementDays || []), dateString]
+        updateUserData({ achievementDays: updatedAchievementDays })
+      }
+      triggerCelebrationAnimation()
+    } else {
+      // Remove the date from achievementDays if calories are below 2000
+      if (userData?.achievementDays?.includes(dateString)) {
+        const updatedAchievementDays = userData.achievementDays.filter((day) => day !== dateString)
+        updateUserData({ achievementDays: updatedAchievementDays })
+      }
+    }
+  }, [selectedDate, userData, calculateDailyTotals, triggerCelebrationAnimation])
 
   const renderWeekCalendar = () => {
     const days = ["D", "L", "M", "M", "J", "V", "S"]
@@ -146,7 +194,20 @@ const HomeScreen = () => {
         {days.map((day, index) => {
           const date = new Date(weekStart)
           date.setDate(date.getDate() + index)
+          const dateString = date.toISOString().split("T")[0]
           const isSelected = date.toDateString() === selectedDate.toDateString()
+          const isAchievement = userData?.achievementDays?.includes(dateString)
+
+          const animatedStyle = {
+            transform: [
+              {
+                scale: celebrationAnim.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [1, 1.2, 1],
+                }),
+              },
+            ],
+          }
 
           return (
             <TouchableOpacity
@@ -154,13 +215,53 @@ const HomeScreen = () => {
               style={[styles.dayCircle, isSelected && styles.activeDayCircle]}
               onPress={() => setSelectedDate(date)}
             >
-              <Text style={[styles.dayText, isSelected && styles.activeDayText]}>{day}</Text>
-              <Text style={[styles.dateText, isSelected && styles.activeDateText]}>{date.getDate()}</Text>
+              <Animated.View style={[styles.dayContent, isAchievement && animatedStyle]}>
+                {isAchievement ? (
+                  <>
+                    <MaterialIcons
+                      name="local-fire-department"
+                      size={36}
+                      color="#FF5733"
+                      style={styles.achievementIcon}
+                    />
+                    <Text style={styles.achievementDateText}>{date.getDate()}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.dayText, isSelected && styles.activeDayText]}>{day}</Text>
+                    <Text style={[styles.dateText, isSelected && styles.activeDateText]}>{date.getDate()}</Text>
+                  </>
+                )}
+              </Animated.View>
             </TouchableOpacity>
           )
         })}
       </View>
     )
+  }
+
+  const handleDeleteFood = async (meal, itemId) => {
+    const user = auth.currentUser
+    if (!user) return
+
+    const userRef = doc(firestoreDb, "users", user.uid)
+    const dateString = selectedDate.toISOString().split("T")[0]
+
+    const updatedMeals = { ...userData.meals }
+    updatedMeals[dateString][meal] = updatedMeals[dateString][meal].filter((item) => item.id !== itemId)
+
+    await updateDoc(userRef, { meals: updatedMeals })
+    setUserData((prevData) => ({
+      ...prevData,
+      meals: updatedMeals,
+    }))
+
+    // Check if achievement status needs to be updated
+    const newTotals = calculateDailyTotals(updatedMeals[dateString])
+    if (newTotals.calories < 2000 && userData?.achievementDays?.includes(dateString)) {
+      const updatedAchievementDays = userData.achievementDays.filter((day) => day !== dateString)
+      updateUserData({ achievementDays: updatedAchievementDays })
+    }
   }
 
   if (loading) {
@@ -202,12 +303,12 @@ const HomeScreen = () => {
         {/* Progress Circles */}
         <View style={styles.progressContainer}>
           <ProgressCircle
-            percentage={(dailyTotals.calories / 2000) * 100}
+            percentage={(dailyTotals.calories / 1000) * 100}
             label="Calorías"
             color="#FF5733"
             iconName="local-fire-department"
             value={dailyTotals.calories}
-            total={2000}
+            total={1000}
           />
           <ProgressCircle
             percentage={(dailyTotals.protein / 100) * 100}
@@ -218,14 +319,17 @@ const HomeScreen = () => {
             total={100}
           />
           <ProgressCircle
-            percentage={(dailyTotals.fat / 65) * 100}
+            percentage={(dailyTotals.fat / 30) * 100}
             label="Grasas"
             color="#2ECC71"
             iconName="opacity"
             value={dailyTotals.fat}
-            total={65}
+            total={30}
           />
         </View>
+
+        {/* Water Progress Bar */}
+        <WaterProgressBar waterCount={waterCount} onIncrement={incrementWaterCount} />
 
         {/* Meals */}
         <View style={styles.mealsContainer}>
@@ -256,7 +360,12 @@ const HomeScreen = () => {
                 {mealItems.map((item, itemIndex) => (
                   <View key={itemIndex} style={styles.foodItem}>
                     <Text style={styles.foodName}>{item.name}</Text>
-                    <Text style={styles.foodCalories}>{item.calories} kcal</Text>
+                    <View style={styles.foodItemRight}>
+                      <Text style={styles.foodCalories}>{item.calories} kcal</Text>
+                      <TouchableOpacity onPress={() => handleDeleteFood(meal, item.id)}>
+                        <MaterialIcons name="delete" size={20} color="#FF5733" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
                 <TouchableOpacity style={styles.addButton} onPress={() => handleAddFood(meal)}>
@@ -372,12 +481,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dayCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#2C2C2E",
+  },
+  dayContent: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   activeDayCircle: {
     backgroundColor: "#FFE55C",
@@ -396,6 +511,16 @@ const styles = StyleSheet.create({
   },
   activeDateText: {
     color: "#000",
+  },
+  achievementIcon: {
+    position: "absolute",
+  },
+  achievementDateText: {
+    position: "absolute",
+    top: 36,
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   progressContainer: {
     flexDirection: "row",
@@ -439,6 +564,10 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderBottomWidth: 1,
     borderBottomColor: "#333",
+  },
+  foodItemRight: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   foodName: {
     color: "#fff",
