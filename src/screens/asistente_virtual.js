@@ -17,7 +17,7 @@ const AsistenteVirtual = () => {
 
       </View>
       {/* Usar el componente Footer */}
-      <Footer activeScreen="DView" navigation={navigation} />
+      <Footer activeScreen="AsistenteVirtual" navigation={navigation} />
     </View>
   );
 };

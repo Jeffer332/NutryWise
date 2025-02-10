@@ -1,447 +1,527 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  StyleSheet, 
-  TouchableOpacity, 
+"use client"
+
+import { useEffect, useState, useCallback } from "react"
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
   ActivityIndicator,
-  ScrollView 
-} from 'react-native';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { auth } from '../services/firebase';
-import { useNavigation } from '@react-navigation/native';
-import Footer from '../components/Footer';
-import ProgressCircle from '../components/ProgressCircle';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
+  ScrollView,
+  Modal,
+  TextInput,
+} from "react-native"
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore"
+import { auth } from "../services/firebase"
+import { useNavigation } from "@react-navigation/native"
+import Footer from "../components/Footer"
+import ProgressCircle from "../components/ProgressCircle"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { MaterialIcons } from "@expo/vector-icons"
 
 const HomeScreen = () => {
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const firestoreDb = getFirestore();
-  const navigation = useNavigation();
+  const [userData, setUserData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [searchModalVisible, setSearchModalVisible] = useState(false)
+  const [currentMeal, setCurrentMeal] = useState(null)
+  const [searchResults, setSearchResults] = useState([])
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const firestoreDb = getFirestore()
+  const navigation = useNavigation()
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const cachedData = await AsyncStorage.getItem('userData');
+        const cachedData = await AsyncStorage.getItem("userData")
         if (cachedData) {
-          setUserData(JSON.parse(cachedData));
+          setUserData(JSON.parse(cachedData))
         } else {
-          const user = auth.currentUser;
+          const user = auth.currentUser
           if (user) {
-            const userDoc = await getDoc(doc(firestoreDb, 'users', user.uid));
+            const userDoc = await getDoc(doc(firestoreDb, "users", user.uid))
             if (userDoc.exists()) {
-              const data = userDoc.data();
-              setUserData(data);
-              await AsyncStorage.setItem('userData', JSON.stringify(data));
+              const data = userDoc.data()
+              setUserData(data)
+              await AsyncStorage.setItem("userData", JSON.stringify(data))
             }
           }
         }
       } catch (error) {
-        console.error("Error fetching user data: ", error);
+        console.error("Error fetching user data: ", error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchUserData();
-  }, []);
+    fetchUserData()
+  }, [firestoreDb])
 
   const handleProfilePress = useCallback(() => {
-    navigation.navigate('Profile');
-  }, [navigation]);
+    navigation.navigate("Profile")
+  }, [navigation])
+
+  const handleAddFood = (meal) => {
+    setCurrentMeal(meal)
+    setSearchModalVisible(true)
+  }
+
+  const handleProductSelect = async (product) => {
+    setSearchModalVisible(false)
+
+    const user = auth.currentUser
+    if (!user) return
+
+    const userRef = doc(firestoreDb, "users", user.uid)
+    const userDoc = await getDoc(userRef)
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data()
+      const dateString = selectedDate.toISOString().split("T")[0]
+      const meals = userData.meals || {}
+      const dailyMeals = meals[dateString] || {}
+      const mealItems = dailyMeals[currentMeal] || []
+
+      const newMealItem = {
+        id: Date.now().toString(),
+        name: product.product_name,
+        calories: product.unit_calories,
+        protein: product.protein,
+        carbs: product.carbohydrates,
+        fat: product.fat,
+      }
+
+      mealItems.push(newMealItem)
+
+      const updatedMeals = {
+        ...meals,
+        [dateString]: {
+          ...dailyMeals,
+          [currentMeal]: mealItems,
+        },
+      }
+
+      await updateDoc(userRef, { meals: updatedMeals })
+
+      // Update local state
+      setUserData((prevData) => ({
+        ...prevData,
+        meals: updatedMeals,
+      }))
+    }
+  }
+
+  const searchProducts = async (term) => {
+    const productsRef = collection(firestoreDb, "nutryproducts")
+    const q = query(productsRef, where("product_name", ">=", term), where("product_name", "<=", term + "\uf8ff"))
+    const querySnapshot = await getDocs(q)
+    const results = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    setSearchResults(results)
+  }
+
+  const calculateDailyTotals = () => {
+    const dateString = selectedDate.toISOString().split("T")[0]
+    const dailyMeals = userData?.meals?.[dateString] || {}
+    const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 }
+
+    Object.values(dailyMeals).forEach((meal) => {
+      meal.forEach((item) => {
+        totals.calories += item.calories || 0
+        totals.protein += item.protein || 0
+        totals.carbs += item.carbs || 0
+        totals.fat += item.fat || 0
+      })
+    })
+
+    return totals
+  }
+
+  const renderWeekCalendar = () => {
+    const days = ["D", "L", "M", "M", "J", "V", "S"]
+    const today = new Date()
+    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()))
+
+    return (
+      <View style={styles.weeklyCalendar}>
+        {days.map((day, index) => {
+          const date = new Date(weekStart)
+          date.setDate(date.getDate() + index)
+          const isSelected = date.toDateString() === selectedDate.toDateString()
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[styles.dayCircle, isSelected && styles.activeDayCircle]}
+              onPress={() => setSelectedDate(date)}
+            >
+              <Text style={[styles.dayText, isSelected && styles.activeDayText]}>{day}</Text>
+              <Text style={[styles.dateText, isSelected && styles.activeDateText]}>{date.getDate()}</Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+    )
+  }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#fff" />
       </View>
-    );
+    )
   }
 
-  const progressData = {
-    calories: userData?.calories || 0,
-    water: userData?.water || 0,
-    exercise: userData?.exercise || 0,
-  };
+  const dailyTotals = calculateDailyTotals()
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Image source={require('../../assets/logo.jpeg')} style={styles.logo} />
+        <Image source={require("../../assets/logo.jpeg")} style={styles.logo} />
         {userData && (
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{`${userData.name} ${userData.surname}`}</Text>
-            <Text style={styles.userDetails}>{`${userData.edad} años / ${userData.estatura} cm / ${userData.peso} kg`}</Text>
+            <Text
+              style={styles.userDetails}
+            >{`${userData.edad} años / ${userData.estatura} cm / ${userData.peso} kg`}</Text>
           </View>
         )}
         <TouchableOpacity onPress={handleProfilePress} accessible={true} accessibilityLabel="User profile">
-          <Image 
-            source={userData?.profileImage ? { uri: userData.profileImage } : require('../../assets/user.jpg')} 
-            style={styles.profileImage} 
+          <Image
+            source={userData?.profileImage ? { uri: userData.profileImage } : require("../../assets/user.jpg")}
+            style={styles.profileImage}
             accessibilityLabel="User profile image"
           />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {/* Weekly Calendar */}
+        {renderWeekCalendar()}
+
         {/* Progress Circles */}
         <View style={styles.progressContainer}>
-          <ProgressCircle 
-            percentage={(progressData.calories / 500) * 100} 
-            label="Calorías" 
-            color="#FF5733" 
-            iconName="local-fire-department" 
-            value={progressData.calories}
-            total={500}
+          <ProgressCircle
+            percentage={(dailyTotals.calories / 2000) * 100}
+            label="Calorías"
+            color="#FF5733"
+            iconName="local-fire-department"
+            value={dailyTotals.calories}
+            total={2000}
           />
-          <ProgressCircle 
-            percentage={(progressData.water / 8) * 100} 
-            label="Vasos de agua" 
-            color="#3498DB" 
-            iconName="local-drink" 
-            value={progressData.water}
-            total={8}
+          <ProgressCircle
+            percentage={(dailyTotals.protein / 100) * 100}
+            label="Proteína"
+            color="#3498DB"
+            iconName="fitness-center"
+            value={dailyTotals.protein}
+            total={100}
           />
-          <ProgressCircle 
-            percentage={(progressData.exercise / 30) * 100} 
-            label="Ejercicio" 
-            color="#2ECC71" 
-            iconName="directions-run" 
-            value={progressData.exercise}
-            total={30}
+          <ProgressCircle
+            percentage={(dailyTotals.fat / 65) * 100}
+            label="Grasas"
+            color="#2ECC71"
+            iconName="opacity"
+            value={dailyTotals.fat}
+            total={65}
           />
-        </View>
-
-        {/* Metrics Card */}
-        <View style={styles.metricsContainer}>
-          <View style={styles.metricItem}>
-            <MaterialIcons name="local-fire-department" size={24} color="#FF5733" />
-            <Text style={styles.metricValue}>{progressData.calories}</Text>
-            <Text style={styles.metricLabel}>/500kcal</Text>
-          </View>
-          
-          <View style={styles.metricItem}>
-            <MaterialIcons name="directions-walk" size={24} color="#3498DB" />
-            <Text style={styles.metricValue}>{progressData.water}</Text>
-            <Text style={styles.metricLabel}>/8 vasos</Text>
-          </View>
-          
-          <View style={styles.metricItem}>
-            <MaterialIcons name="directions-run" size={24} color="#2ECC71" />
-            <Text style={styles.metricValue}>{progressData.exercise}</Text>
-            <Text style={styles.metricLabel}>/30mins</Text>
-          </View>
-        </View>
-
-        {/* Weekly Calendar */}
-        <View style={styles.weeklyCalendar}>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-            <View 
-              key={index} 
-              style={[
-                styles.dayCircle,
-                index === 4 && styles.activeDayCircle
-              ]}
-            >
-              <Text style={[
-                styles.dayText,
-                index === 4 && styles.activeDayText
-              ]}>{day}</Text>
-              <Text style={styles.dateText}>{index + 3}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Macros Progress */}
-        <View style={styles.macrosContainer}>
-          <View style={styles.macroItem}>
-            <Text style={styles.macroLabel}>kcal</Text>
-            <Text style={styles.macroValue}>72 / 1,753</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '4%', backgroundColor: '#666' }]} />
-            </View>
-          </View>
-          <View style={styles.macroItem}>
-            <Text style={styles.macroLabel}>Protein</Text>
-            <Text style={styles.macroValue}>6 / 138 g</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '10%', backgroundColor: '#FFE55C' }]} />
-            </View>
-          </View>
-          <View style={styles.macroItem}>
-            <Text style={styles.macroLabel}>Carbs</Text>
-            <Text style={styles.macroValue}>0 / 169 g</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '0%', backgroundColor: '#FFE55C' }]} />
-            </View>
-          </View>
-          <View style={styles.macroItem}>
-            <Text style={styles.macroLabel}>Fat</Text>
-            <Text style={styles.macroValue}>5 / 58 g</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '8%', backgroundColor: '#FFE55C' }]} />
-            </View>
-          </View>
         </View>
 
         {/* Meals */}
         <View style={styles.mealsContainer}>
-          <View style={styles.mealSection}>
-            <View style={styles.mealHeader}>
-              <View style={styles.mealTitleContainer}>
-                <Text style={styles.mealTitle}>Breakfast</Text>
-                <Image source={require('../../assets/logo.jpeg')} style={styles.mealIcon} />
-              </View>
-              <Text style={styles.mealMacros}>72 kcal | 6 P | 0 C | 5 F</Text>
-            </View>
-            <View style={styles.foodItem}>
-              <View style={styles.foodInfo}>
-                <Image source={require('../../assets/logo.jpeg')} style={styles.foodIcon} />
-                <View>
-                  <Text style={styles.foodName}>Huevo</Text>
-                  <Text style={styles.foodQuantity}>1 unidad (50 g)</Text>
+          {["Desayuno", "Almuerzo", "Cena", "Snacks"].map((meal, index) => {
+            const dateString = selectedDate.toISOString().split("T")[0]
+            const mealItems = userData?.meals?.[dateString]?.[meal] || []
+            const mealTotals = mealItems.reduce(
+              (acc, item) => ({
+                calories: acc.calories + (item.calories || 0),
+                protein: acc.protein + (item.protein || 0),
+                carbs: acc.carbs + (item.carbs || 0),
+                fat: acc.fat + (item.fat || 0),
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            )
+
+            return (
+              <View key={index} style={styles.mealSection}>
+                <View style={styles.mealHeader}>
+                  <View style={styles.mealTitleContainer}>
+                    <Text style={styles.mealTitle}>{meal}</Text>
+                    <MaterialIcons name="restaurant" size={24} color="#FFE55C" />
+                  </View>
+                  <Text style={styles.mealMacros}>
+                    {`${mealTotals.calories} kcal | ${mealTotals.protein}P | ${mealTotals.carbs}C | ${mealTotals.fat}F`}
+                  </Text>
                 </View>
+                {mealItems.map((item, itemIndex) => (
+                  <View key={itemIndex} style={styles.foodItem}>
+                    <Text style={styles.foodName}>{item.name}</Text>
+                    <Text style={styles.foodCalories}>{item.calories} kcal</Text>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addButton} onPress={() => handleAddFood(meal)}>
+                  <MaterialIcons name="add" size={24} color="#fff" />
+                  <Text style={styles.addButtonText}>Agregar alimento</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.foodCalories}>72 kcal</Text>
-            </View>
-            <TouchableOpacity style={styles.addButton}>
-              <MaterialIcons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.mealSection}>
-            <View style={styles.mealHeader}>
-              <View style={styles.mealTitleContainer}>
-                <Text style={styles.mealTitle}>Lunch</Text>
-                <Image source={require('../../assets/logo.jpeg')} style={styles.mealIcon} />
-              </View>
-              <Text style={styles.mealMacros}>0 kcal | 0 P | 0 C | 0 F</Text>
-            </View>
-            <TouchableOpacity style={styles.addButton}>
-              <MaterialIcons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.mealSection}>
-            <View style={styles.mealHeader}>
-              <View style={styles.mealTitleContainer}>
-                <Text style={styles.mealTitle}>Dinner</Text>
-                <Image source={require('../../assets/logo.jpeg')} style={styles.mealIcon} />
-              </View>
-              <Text style={styles.mealMacros}>0 kcal | 0 P | 0 C | 0 F</Text>
-            </View>
-            <TouchableOpacity style={styles.addButton}>
-              <MaterialIcons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+            )
+          })}
         </View>
       </ScrollView>
 
       {/* Footer */}
       <Footer activeScreen="Home" navigation={navigation} />
+
+      {/* Product Search Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={searchModalVisible}
+        onRequestClose={() => setSearchModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Buscar Alimento</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setSearchModalVisible(false)}>
+              <MaterialIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.searchInputContainer}>
+              <MaterialIcons name="search" size={24} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar producto..."
+                placeholderTextColor="#666"
+                onChangeText={(text) => searchProducts(text)}
+              />
+            </View>
+            <ScrollView style={styles.searchResultsContainer}>
+              {searchResults.map((product) => (
+                <TouchableOpacity
+                  key={product.id}
+                  style={styles.searchResultItem}
+                  onPress={() => handleProductSelect(product)}
+                >
+                  <Text style={styles.productName}>{product.product_name}</Text>
+                  <Text
+                    style={styles.productDetails}
+                  >{`${product.unit_calories} cal / ${product.unit_weight}${product.weight_unit}`}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191A2E',
+    backgroundColor: "#191A2E",
+    marginTop: 50,
   },
   scrollContainer: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#191A2E',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#191A2E",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 10,
-    backgroundColor: '#fff',
-    elevation: 5,
-    marginTop: 50,
+    backgroundColor: "#1C1C1E",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
   },
   logo: {
-    width: 50,
-    height: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   userInfo: {
     flex: 1,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     marginRight: 10,
   },
   userName: {
     fontSize: 16,
-    color: 'black',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   userDetails: {
-    fontSize: 14,
-    color: 'gray',
+    fontSize: 12,
+    color: "#666",
   },
   profileImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
   },
-  progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 30,
-  },
-  metricsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#1C1C1E',
-    margin: 20,
-    borderRadius: 15,
-    padding: 20,
-  },
-  metricItem: {
-    alignItems: 'center',
-  },
-  metricValue: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: 'bold',
-    marginVertical: 5,
-  },
-  metricLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
   weeklyCalendar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginTop: 20,
+    paddingVertical: 10,
+    backgroundColor: "#1C1C1E",
+    marginBottom: 10,
   },
   dayCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#333',
-    alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#2C2C2E",
   },
   activeDayCircle: {
-    backgroundColor: '#FFE55C',
+    backgroundColor: "#FFE55C",
   },
   dayText: {
-    color: '#666',
+    color: "#fff",
     fontSize: 12,
   },
-  activeDayText: {
-    color: '#000',
-  },
   dateText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  macrosContainer: {
-    padding: 20,
-  },
-  macroItem: {
-    marginBottom: 15,
-  },
-  macroLabel: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  macroValue: {
-    color: '#666',
+    color: "#fff",
     fontSize: 14,
-    marginBottom: 5,
+    fontWeight: "bold",
   },
-  progressBar: {
-    height: 3,
-    backgroundColor: '#333',
-    borderRadius: 2,
+  activeDayText: {
+    color: "#000",
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
+  activeDateText: {
+    color: "#000",
+  },
+  progressContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 20,
+    marginBottom: 20,
   },
   mealsContainer: {
-    padding: 20,
+    padding: 15,
   },
   mealSection: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: "#1C1C1E",
     borderRadius: 15,
     padding: 15,
     marginBottom: 15,
   },
   mealHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   mealTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   mealTitle: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
     marginRight: 10,
-  },
-  mealIcon: {
-    width: 20,
-    height: 20,
   },
   mealMacros: {
-    color: '#666',
-    fontSize: 14,
+    color: "#666",
+    fontSize: 12,
   },
   foodItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  foodInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  foodIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 10,
+    borderBottomColor: "#333",
   },
   foodName: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  foodQuantity: {
-    color: '#666',
+    color: "#fff",
     fontSize: 14,
   },
   foodCalories: {
-    color: '#fff',
-    fontSize: 16,
+    color: "#666",
+    fontSize: 12,
   },
   addButton: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#2C2C2E',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2C2C2E",
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 10,
     marginTop: 10,
   },
-});
+  addButtonText: {
+    color: "#fff",
+    marginLeft: 10,
+    fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#191A2E",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    height: "80%",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 20,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2C2C2E",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  searchResultsContainer: {
+    flex: 1,
+  },
+  searchResultItem: {
+    backgroundColor: "#2C2C2E",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+  },
+  productName: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  productDetails: {
+    color: "#666",
+    fontSize: 14,
+    marginTop: 5,
+  },
+})
 
-export default HomeScreen;
+export default HomeScreen
+
