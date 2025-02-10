@@ -50,7 +50,7 @@ const WelcomeScreen = ({ navigation }) => {
         <Text style={WelcomeScreenStyles.title}>AIDrive</Text>
         {/* Agrega el logo con animación */}
         <Animated.Image
-          source={require('../../assets/logo.jpeg')} // Asegúrate de tener un logo en la carpeta assets
+          source={require('../../assets/logo.png')} // Asegúrate de tener un logo en la carpeta assets
           style={[WelcomeScreenStyles.logo, animatedStyles]} // Aplica el estilo animado
         />
         <Text style={WelcomeScreenStyles.subtitle}>Bienvenido</Text>
