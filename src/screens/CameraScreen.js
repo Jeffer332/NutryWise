@@ -1,34 +1,33 @@
-// src/screens/CameraScreen.js
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Footer from '../components/Footer'; // Importa el Footer
-import Header from '../components/Header'; // Importa el Header
+"use client"
+import { View, StyleSheet } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import Footer from "../components/Footer"
+import Header from "../components/Header"
+import ProductSearchG from "../components/ProductSearchG"
 
 const CameraScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation()
 
   return (
     <View style={styles.container}>
       <Header />
-      <View style={styles.ViewContainer}>
-
-
-
+      <View style={styles.viewContainer}>
+        <ProductSearchG />
       </View>
-      {/* Usar el componente Footer */}
       <Footer activeScreen="Camera" navigation={navigation} />
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#191A2E",
   },
-  ViewContainer: {
-    flex: 1, // Ocupa el espacio entre el header y el footer
+  viewContainer: {
+    flex: 1,
   },
-});
+})
 
-export default CameraScreen;
+export default CameraScreen
+
