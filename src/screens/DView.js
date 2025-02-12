@@ -7,12 +7,14 @@ import {
   Animated,
   Image,
   ScrollView,
-  Dimensions
+  Dimensions,
+  SafeAreaView
 } from "react-native"
 import { getFirestore, doc, getDoc } from "firebase/firestore"
 import { auth } from "../services/firebase"
 import Header from "../components/Header"
 import Footer from "../components/Footer"
+import { Feather } from '@expo/vector-icons'
 
 const ThreeDView = ({ navigation }) => {
   const [userData, setUserData] = useState(null)
@@ -22,6 +24,7 @@ const ThreeDView = ({ navigation }) => {
 
   useEffect(() => {
     fetchUserData()
+    animatePet()
   }, [])
 
   useEffect(() => {
@@ -44,6 +47,21 @@ const ThreeDView = ({ navigation }) => {
     } catch (error) {
       console.error("Error fetching user data:", error)
     }
+  }
+
+  const animatePet = () => {
+    Animated.sequence([
+      Animated.timing(bounceAnim, {
+        toValue: 1.1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bounceAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    ]).start(() => animatePet())
   }
 
   const calculateStreak = (achievementDays) => {
@@ -76,106 +94,276 @@ const ThreeDView = ({ navigation }) => {
   const petLevel = getPetLevel(streakDays)
   const nextPets = [petLevel + 1, petLevel + 2, petLevel + 3].filter(level => level <= 4)
 
+  const achievements = [
+    { text: "Registra una comida", completed: true },
+    { text: "cumpleta tu circulo de calorias diaria", completed: true },
+    { text: "Haz una consulta al chat", completed: true },
+  ]
+
+  const reactions = [
+    { emoji: "❤️", count: 234 },
+    { emoji: "👍", count: 120 },
+    { emoji: "😊", count: 89 },
+  ]
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Header />
-
-      <View style={styles.ViewContainer}>
-        {/* Consejos y reglas */}
-        <View style={styles.tipsContainer}>
-          <Text style={styles.sectionTitle}>Consejos para mantener la racha</Text>
-          <Text style={styles.tip}>🥦 Come saludable y registra tu comida.</Text>
-          <Text style={styles.tip}>🚶 Mantente activo al menos 30 minutos al día.</Text>
-          <Text style={styles.tip}>💧 Bebe suficiente agua y mantén hábitos saludables.</Text>
-        </View>
-
-        {/* Barra de progreso */}
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressText}>Día {streakDays} / 100</Text>
-          <View style={styles.progressBarWrapper}>
-            <View
-              style={[
-                styles.progressBar,
-                {
-                  width: `${Math.min((streakDays / 100) * 100, 100)}%`,
-                  backgroundColor: streakDays < 40 ? "#4CAF50" : streakDays < 80 ? "#FFC107" : "#FF5722",
-                },
-              ]}
-            />
+      
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.mascotaCard}>
+          {/* Timer Display */}
+          <View style={styles.timerContainer}>
+            <Text style={styles.timerValue}>Días de racha</Text>
+            <Text style={styles.timerValue}>{streakDays}</Text>
           </View>
-          <View style={styles.hitos}>
-            {[40, 80, 100].map((hito) => (
-              <View key={hito} style={styles.hito}>
-                <Text style={styles.hitoText}>{hito}</Text>
+
+          {/* Current Pet */}
+          <Animated.View style={[styles.petContainer, { transform: [{ scale: bounceAnim }] }]}>
+            <Image 
+              source={getPetImage(petLevel)}
+              style={styles.mascotaImage}
+            />
+          </Animated.View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>Día {streakDays} / 100</Text>
+            <View style={styles.progressBarWrapper}>
+              <View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: `${Math.min((streakDays / 100) * 100, 100)}%`,
+                    backgroundColor: streakDays < 40 ? "#32D74B" : streakDays < 80 ? "#FF9500" : "#FF3B30",
+                  },
+                ]}
+              />
+            </View>
+            <View style={styles.milestones}>
+              {[40, 80, 100].map((milestone) => (
+                <View key={milestone} style={styles.milestone}>
+                  <Text style={styles.milestoneText}>{milestone}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Achievements */}
+          <View style={styles.achievementsContainer}>
+            <Text style={styles.sectionTitle}>Haz crecer tu mascota</Text>
+            {achievements.map((achievement, index) => (
+              <View key={index} style={styles.achievementRow}>
+                <View style={styles.checkmarkContainer}>
+                  <Feather name="check" size={16} color="#32D74B" />
+                </View>
+                <Text style={styles.achievementText}>{achievement.text}</Text>
               </View>
             ))}
           </View>
+
+          <View style={styles.divider} />
+
+          {/* Next Pets */}
+          <Text style={styles.sectionTitle}>Próximas Evoluciones</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.nextPetsScroll}
+          >
+            {nextPets.map((level, index) => (
+              <View key={index} style={styles.nextPetContainer}>
+                <Image source={getPetImage(level)} style={styles.nextPetImage} />
+                <Text style={styles.nextPetText}>Día {level * 40}</Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.divider} />
+
+          {/* Reactions */}
+          <Text style={styles.reactionTitle}>Tus insignias de racha</Text>
+          <View style={styles.reactionsContainer}>
+            {reactions.map((reaction, index) => (
+              <View key={index} style={styles.reactionItem}>
+                <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                <Text style={styles.reactionCount}>{reaction.count}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Feed Button */}
+          <TouchableOpacity style={styles.feedButton}>
+            <Text style={styles.feedButtonText}>Alimentar</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Mascota actual */}
-        <View style={styles.petContainer}>
-          <Animated.Image source={getPetImage(petLevel)} style={styles.petImage} />
-        </View>
-
-        {/* Carrusel de futuras mascotas */}
-        <Text style={styles.sectionTitle}>Próximas Evoluciones</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
-          {nextPets.map((level, index) => (
-            <View key={index} style={[styles.nextPetContainer, { width: screenWidth * 0.3 }]}>
-              <Image source={getPetImage(level)} style={styles.nextPetImage} />
-              <Text style={styles.nextPetText}>Día {level * 40}</Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Botón para alimentar */}
-        <TouchableOpacity style={styles.feedButton}>
-          <Text style={styles.feedButtonText}>Alimentar</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <Footer activeScreen="ThreeDView" navigation={navigation} />
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#1E1E2E" },
-  ViewContainer: { flex: 1, padding: 20 },
-
-  // Consejos
-  tipsContainer: { marginBottom: 20 },
-  sectionTitle: { fontSize: 20, fontWeight: "bold", color: "#FFF", marginBottom: 10 },
-  tip: { fontSize: 16, color: "#DDD", marginBottom: 5 },
-
-  // Barra de progreso
-  progressContainer: { marginBottom: 20 },
-  progressText: { fontSize: 18, fontWeight: "bold", color: "#FFF", textAlign: "center", marginBottom: 5 },
-  progressBarWrapper: {
-    height: 20,
-    width: "100%",
-    backgroundColor: "#2E2E3E",
-    borderRadius: 10,
-    overflow: "hidden",
+  container: {
+    flex: 1,
+    backgroundColor: '#F2F2F7',
+    marginTop: -60,
   },
-  progressBar: { height: "100%", borderRadius: 10 },
-  hitos: { flexDirection: "row", justifyContent: "space-between", marginTop: 5 },
-  hito: { backgroundColor: "#FFF", borderRadius: 15, padding: 5 },
-  hitoText: { fontWeight: "bold", color: "#000" },
-
-  // Mascota
-  petContainer: { alignItems: "center", marginVertical: 20 },
-  petImage: { width: 250, height: 250, resizeMode: "contain" },
-
-  // Carrusel
-  carousel: { padding: 10, flexDirection: "row", justifyContent: "center" },
-  nextPetContainer: { marginHorizontal: 10, alignItems: "center" },
-  nextPetImage: { width: 80, height: 80, borderRadius: 10, resizeMode: "contain" },
-  nextPetText: { fontSize: 14, color: "#fff", marginTop: 5, fontWeight: "bold" },
-
-  // Botón
-  feedButton: { backgroundColor: "#FF5722", padding: 15, borderRadius: 10, alignItems: "center", marginTop: 20 },
-  feedButtonText: { fontSize: 18, color: "#fff", fontWeight: "bold" },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  mascotaCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  timerContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  timerValue: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+    fontVariant: ['tabular-nums'],
+  },
+  timerLabel: {
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  petContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  mascotaImage: {
+    width: 150,
+    height: 150,
+    resizeMode: 'contain',
+  },
+  progressContainer: {
+    marginBottom: 24,
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  progressBarWrapper: {
+    height: 8,
+    backgroundColor: '#E5E5EA',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  milestones: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  milestone: {
+    alignItems: 'center',
+  },
+  milestoneText: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  achievementsContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+  },
+  achievementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  checkmarkContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E5F9E7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  achievementText: {
+    fontSize: 16,
+    color: '#000000',
+  },
+  nextPetsScroll: {
+    marginBottom: 24,
+  },
+  nextPetContainer: {
+    marginRight: 16,
+    alignItems: 'center',
+  },
+  nextPetImage: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+    marginBottom: 8,
+  },
+  nextPetText: {
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E5EA',
+    marginVertical: 24,
+  },
+  reactionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+  },
+  reactionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+  },
+  reactionItem: {
+    alignItems: 'center',
+  },
+  reactionEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  reactionCount: {
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  feedButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+  },
+  feedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
 })
 
 export default ThreeDView

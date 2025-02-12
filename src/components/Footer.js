@@ -13,10 +13,10 @@ const Footer = ({ activeScreen, navigation }) => {
         <Ionicons name="chatbubble-ellipses" size={30} color={activeScreen === 'AsistenteVirtual' ? '#494C73' : '#fff'} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('Camera')}>
-        <Ionicons name="camera" size={30} color={activeScreen === 'Camera' ? '#494C73' : '#fff'} />
+        <Ionicons name="navigate" size={30} color={activeScreen === 'Camera' ? '#494C73' : '#fff'} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('DView')}>
-        <Ionicons name="logo-apple-ar" size={30} color={activeScreen === 'DView' ? '#494C73' : '#fff'} />
+        <Ionicons name="flame" size={30} color={activeScreen === 'DView' ? '#494C73' : '#fff'} />
       </TouchableOpacity>
     </View>
   );
