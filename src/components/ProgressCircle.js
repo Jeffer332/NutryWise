@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: 'green',
     marginTop: 5,
   },
   label: {

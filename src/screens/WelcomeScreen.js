@@ -1,4 +1,3 @@
-// src/screens/WelcomeScreen.js
 import React, { useEffect } from 'react';
 import { View, Text, ImageBackground } from 'react-native';
 import Animated, { 
@@ -47,7 +46,7 @@ const WelcomeScreen = ({ navigation }) => {
       style={WelcomeScreenStyles.background}
     >
       <View style={WelcomeScreenStyles.overlay}>
-        <Text style={WelcomeScreenStyles.title}>AIDrive</Text>
+        <Text style={WelcomeScreenStyles.title}>NutriWise</Text>
         {/* Agrega el logo con animación */}
         <Animated.Image
           source={require('../../assets/logo.png')} // Asegúrate de tener un logo en la carpeta assets

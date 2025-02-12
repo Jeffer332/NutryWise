@@ -126,10 +126,6 @@ const ProfileScreen = () => {
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Guardar Cambios</Text>}
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={loggingOut}>
-        {loggingOut ? <ActivityIndicator color="#fff" /> : <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>}
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -139,27 +135,36 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191A2E',
+    backgroundColor: '#f0f0f0',
     padding: 20,
   },
   title: {
+    paddingVertical: 30,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: 'green',
     textAlign: 'center',
     marginBottom: 20,
   },
   label: {
     fontSize: 16,
-    color: '#fff',
+    fontWeight: 'bold',
+    color: 'green',
     marginBottom: 5,
+    alignContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
   },
   input: {
-    backgroundColor: '#333',
+    backgroundColor: 'grey',
     color: '#fff',
     padding: 10,
     borderRadius: 8,
     marginBottom: 15,
+    width: '80%',
+    alignContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
   },
   saveButton: {
     backgroundColor: '#4CAF50',
@@ -167,6 +172,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
+    width: '50%',
+    alignContent: 'center',
+    alignSelf: 'center',  
+    alignItems: 'center', 
   },
   saveButtonText: {
     color: '#fff',

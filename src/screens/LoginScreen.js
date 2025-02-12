@@ -15,14 +15,14 @@ const LoginScreen = ({ navigation }) => {
     try {
       const cap_user = await signInWithEmailAndPassword(auth, email, password);
       const user = cap_user.user;
-
-      setUser({ userId: user.uid, email: user.email }); // Guarda el userId en el contexto
-
-      navigation.navigate('Main');
+  
+      setUser({ userId: user.uid, email: user.email }); // Guarda el usuario en el contexto
+  
+      // 🔥 No navegamos manualmente, App.js se encargará de cambiar a "Tabs"
     } catch (error) {
       Alert.alert("Error al iniciar sesión", "Verifica tus credenciales.");
     }
-  };
+  };  
 
   return (
     <KeyboardAvoidingView

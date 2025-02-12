@@ -388,7 +388,7 @@ const HomeScreen = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Buscar Alimento</Text>
             <TouchableOpacity style={styles.closeButton} onPress={() => setSearchModalVisible(false)}>
-              <MaterialIcons name="close" size={24} color="#fff" />
+              <MaterialIcons name="close" size={24} color="green" />
             </TouchableOpacity>
             <View style={styles.searchInputContainer}>
               <MaterialIcons name="search" size={24} color="#666" style={styles.searchIcon} />
@@ -423,7 +423,7 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#191A2E",
+    backgroundColor: "#f0f0f0",
     marginTop: 50,
   },
   scrollContainer: {
@@ -433,16 +433,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#191A2E",
+    backgroundColor: "#f0f0f0",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: 10,
-    backgroundColor: "#1C1C1E",
+    backgroundColor: "#f0f0f0",
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "green",
   },
   logo: {
     width: 40,
@@ -456,12 +456,12 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    color: "#fff",
+    color: "green",
     fontWeight: "bold",
   },
   userDetails: {
     fontSize: 12,
-    color: "#666",
+    color: "green",
   },
   profileImage: {
     width: 40,
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: "#1C1C1E",
+    backgroundColor: "#f0f0f0",
     marginBottom: 10,
   },
   dayCircle: {
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#2C2C2E",
+    backgroundColor: "green",
   },
   dayContent: {
     width: "100%",
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   activeDayCircle: {
-    backgroundColor: "#FFE55C",
+    backgroundColor: "#66c83b",
   },
   dayText: {
     color: "#fff",
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   mealSection: {
-    backgroundColor: "#1C1C1E",
+    backgroundColor: "#66c83b",
     borderRadius: 15,
     padding: 15,
     marginBottom: 15,
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   mealTitle: {
-    color: "#fff",
+    color: "green",
     fontSize: 18,
     fontWeight: "bold",
     marginRight: 10,
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2C2C2E",
+    backgroundColor: "green",
     borderRadius: 10,
     padding: 10,
     marginTop: 10,
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#191A2E",
+    backgroundColor: "#f0f0f0",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
+    color: "green",
     marginBottom: 20,
   },
   closeButton: {
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2C2C2E",
+    backgroundColor: "#fff",
     borderRadius: 10,
     paddingHorizontal: 10,
     marginBottom: 20,
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: "#fff",
+    color: "#666",
     fontSize: 16,
     paddingVertical: 10,
   },
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchResultItem: {
-    backgroundColor: "#2C2C2E",
+    backgroundColor: "#66c83b",
     borderRadius: 10,
     padding: 15,
     marginBottom: 10,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   productDetails: {
-    color: "#666",
+    color: "#fff",
     fontSize: 14,
     marginTop: 5,
   },

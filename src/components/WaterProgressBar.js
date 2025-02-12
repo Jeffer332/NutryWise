@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     height: 10,
-    backgroundColor: "#2C2C2E",
+    backgroundColor: "lightgray",
     borderRadius: 5,
     overflow: "hidden",
   },
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   countText: {
-    color: "#fff",
+    color: "#3498DB",
     marginLeft: 5,
     fontSize: 16,
   },
