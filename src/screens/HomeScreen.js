@@ -17,7 +17,6 @@ import {
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore"
 import { auth } from "../services/firebase"
 import { useNavigation } from "@react-navigation/native"
-import Footer from "../components/Footer"
 import ProgressCircle from "../components/ProgressCircle"
 import { MaterialIcons } from "@expo/vector-icons"
 import WaterProgressBar from "../components/WaterProgressBar"
@@ -378,9 +377,6 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Footer */}
-      <Footer activeScreen="Home" navigation={navigation} />
-
       {/* Product Search Modal */}
       <Modal
         animationType="slide"
@@ -653,4 +649,3 @@ const styles = StyleSheet.create({
 })
 
 export default HomeScreen
-

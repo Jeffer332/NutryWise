@@ -133,8 +133,6 @@ const ThreeDView = ({ navigation }) => {
           <Text style={styles.feedButtonText}>Alimentar</Text>
         </TouchableOpacity>
       </View>
-
-      <Footer activeScreen="ThreeDView" navigation={navigation} />
     </View>
   )
 }

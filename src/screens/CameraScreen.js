@@ -14,7 +14,6 @@ const CameraScreen = () => {
       <View style={styles.viewContainer}>
         <ProductSearchG />
       </View>
-      <Footer activeScreen="Camera" navigation={navigation} />
     </View>
   )
 }

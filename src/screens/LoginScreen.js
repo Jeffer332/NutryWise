@@ -4,41 +4,23 @@ import { View, TextInput, Text, Image, TouchableOpacity, ImageBackground, Keyboa
 import { auth } from '../services/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import LoginScreenStyles from '../styles/LoginScreenStyles';
-import { getFirestore, doc, getDoc } from 'firebase/firestore'; 
+import { useUser } from '../context/UserContext';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const db = getFirestore(); // Inicializa Firestore
+  const { setUser } = useUser(); // Obtiene la función para actualizar el usuario
 
   const handleLogin = async () => {
     try {
-      //validar que el usuario exista aprovechando la autenticación y capturamos datos del usuario
       const cap_user = await signInWithEmailAndPassword(auth, email, password);
-      //console.log(cap_user);
-      const user = cap_user.user; //captura exclusiva de los datos del usuario autenticado
-      //console.log(user);
-      // obtenemos la colección referente al usuario autenticado
-      const user_Ref = doc(db,'users',user.uid);
-      const doc_datos_user = await getDoc(user_Ref);
-      //console.log(doc_datos_user.data())
-      if (doc_datos_user.exists()){
-        const datos_user = doc_datos_user.data();
-        const email_original = datos_user.email;
-        console.log(email_original)
-        console.log(email)
-        //validamos que el correo sea exáctamente similar al de la base
-        if (email === email_original){
-          navigation.navigate('Home');
-        }else{
-          alert("Error al iniciar sesión. Verifica tus credenciales.");
-        }
-      }else{
-        alert("El usuario no existe");
-      }
+      const user = cap_user.user;
+
+      setUser({ userId: user.uid, email: user.email }); // Guarda el userId en el contexto
+
+      navigation.navigate('Main');
     } catch (error) {
-      //console.error("Error al iniciar sesión:", error);
-      alert("Error al iniciar sesión. Verifica tus credenciales.");
+      Alert.alert("Error al iniciar sesión", "Verifica tus credenciales.");
     }
   };
 
